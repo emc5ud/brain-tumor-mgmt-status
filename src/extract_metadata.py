@@ -5,46 +5,47 @@ from glob import glob
 from multiprocessing import Pool
 from tqdm import tqdm
 
+
 FIELDS = [
-    'AccessionNumber',
-    'AcquisitionMatrix',
+    #'AccessionNumber',                 # duplicate of PatientID
+    'AcquisitionMatrix',                
     #'B1rms',                           # nan
     #'BitsAllocated',                   # const: 16
     #'BitsStored',                      # const: 16
-    'Columns',
-    'ConversionType',
-    'DiffusionBValue',
-    'DiffusionGradientOrientation',
-    'EchoNumbers',
+    'Columns',                          # 
+    #'ConversionType',                  # nan, but rarely WSD
+    #'DiffusionBValue',                 # nan, but rarely 0
+    #'DiffusionGradientOrientation',    # nan, but rarely [0.0, 0.0, 0.0] 
+    'EchoNumbers',                      # http://mriquestions.com/fse-parameters.html
     #'EchoTime',                        # nan
-    'EchoTrainLength',
-    'FlipAngle',
+    'EchoTrainLength',                  # http://mriquestions.com/fse-parameters.html
+    'FlipAngle',                        # http://mriquestions.com/what-is-flip-angle.html
     #'HighBit',                         # const: 15
-    'HighRRValue',
-    'ImageDimensions',
-    'ImageFormat',
-    'ImageGeometryType',
-    'ImageLocation',
-    'ImageOrientation',
-    'ImageOrientationPatient',
-    'ImagePosition',
-    'ImagePositionPatient',
-    #'ImageType',                       # [const: 'DERIVED', 'SECONDARY']            
-    'ImagedNucleus',
-    'ImagingFrequency',
-    'InPlanePhaseEncodingDirection',
-    'InStackPositionNumber',
-    'InstanceNumber',
+    'HighRRValue',                      # nan but rarely 0
+    #'ImageDimensions',                 # nan but rarely 2
+    #'ImageFormat',                     # nan but rarely RECT
+    #'ImageGeometryType',               # nan but rarely PLANAR
+    #'ImageLocation',                   # nan but rarely 32736.0
+    #'ImageOrientation',                # nan but rarely something else
+    'ImageOrientationPatient',          # see notebook
+    #'ImagePosition',                   # nan but rarely something else
+    'ImagePositionPatient',             # see notebook
+    #'ImageType',                       # const: ['DERIVED', 'SECONDARY']            
+    #'ImagedNucleus',                   # const: 1H 
+    'ImagingFrequency',                 # const: near 0
+    'InPlanePhaseEncodingDirection',    # usually row, sometimes col
+    'InStackPositionNumber',            # position of image in series
+    'InstanceNumber',                   # image ID
     #'InversionTime',                   # nan
     #'Laterality',                      # nan
-    'LowRRValue',
-    'MRAcquisitionType',
-    'MagneticFieldStrength',
+    #'LowRRValue',                      # nan but rarely 0
+    'MRAcquisitionType',                # 3D but rarely 2D
+    'MagneticFieldStrength',            # 3 but rarely 1.5
     #'Modality',                        # const: MR
-    'NumberOfAverages',
+    'NumberOfAverages',                 # 1-3
     'NumberOfPhaseEncodingSteps',
     'PatientID',
-    'PatientName',
+    #'PatientName',                     # duplicate of PatientID
     #'PatientPosition',                 # const: HFS
     'PercentPhaseFieldOfView',
     'PercentSampling',
@@ -64,16 +65,16 @@ FIELDS = [
     #'SOPClassUID',                     # const: 1.2.840.10008.5.1.4.1.1.4
     'SOPInstanceUID',
     #'SamplesPerPixel',                 # const: 1
-    'SeriesDescription',
+    'SeriesDescription',                # FLAIR, etc... 
     'SeriesInstanceUID',
-    'SeriesNumber',
+    'SeriesNumber',                     # see notebook
     'SliceLocation',
     'SliceThickness',
     'SpacingBetweenSlices',             # const: 1
     'SpatialResolution',
     'SpecificCharacterSet',
-    'StudyInstanceUID',
-    'TemporalResolution',
+    #'StudyInstanceUID',                # nan
+    #'TemporalResolution',
     #'TransferSyntaxUID',               # const: 1.2.840.10008.1.2
     'TriggerWindow',
     'WindowCenter',
@@ -95,7 +96,25 @@ def get_dicom_files(labels):
 def get_meta_info(dicom_path):
     dicom_file = dicom.read_file(dicom_path, force=True)
     row = {f: dicom_file.get(f) for f in FIELDS}
+    row['image_plane'] = get_image_plane(row['ImageOrientationPatient'])
+    row['image_position_x'], \
+        row['image_position_y'], \
+        row['image_position_z'] = row['ImagePositionPatient']
     return row
+
+
+def get_image_plane(loc):
+    # conver listof floats into 1 of 3 planes
+    loc = map(round, loc)
+    row_x, row_y, row_z, col_x, col_y, col_z = loc
+    if row_x == 1 and row_y == 0 and col_x == 0 and col_y == 0:
+        return "Coronal"
+    elif row_x == 0 and row_y == 1 and col_x == 0 and col_y == 0:
+        return "Sagittal"
+    elif row_x == 1 and row_y == 0 and col_x == 0 and col_y == 1:
+        return "Axial"
+    else:
+        return "Unknown"
 
 
 def create_meta_df(dicom_files):
