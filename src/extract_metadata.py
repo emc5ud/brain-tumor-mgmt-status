@@ -8,18 +8,18 @@ from tqdm import tqdm
 FIELDS = [
     'AccessionNumber',
     'AcquisitionMatrix',
-    'B1rms',
-    'BitsAllocated',
-    'BitsStored',
+    #'B1rms',                           # nan
+    #'BitsAllocated',                   # const: 16
+    #'BitsStored',                      # const: 16
     'Columns',
     'ConversionType',
     'DiffusionBValue',
     'DiffusionGradientOrientation',
     'EchoNumbers',
-    'EchoTime',
+    #'EchoTime',                        # nan
     'EchoTrainLength',
     'FlipAngle',
-    'HighBit',
+    #'HighBit',                         # const: 15
     'HighRRValue',
     'ImageDimensions',
     'ImageFormat',
@@ -29,67 +29,55 @@ FIELDS = [
     'ImageOrientationPatient',
     'ImagePosition',
     'ImagePositionPatient',
-    'ImageType',
+    #'ImageType',                       # [const: 'DERIVED', 'SECONDARY']            
     'ImagedNucleus',
     'ImagingFrequency',
     'InPlanePhaseEncodingDirection',
     'InStackPositionNumber',
     'InstanceNumber',
-    'InversionTime',
-    'Laterality',
+    #'InversionTime',                   # nan
+    #'Laterality',                      # nan
     'LowRRValue',
     'MRAcquisitionType',
     'MagneticFieldStrength',
-    'Modality',
+    #'Modality',                        # const: MR
     'NumberOfAverages',
     'NumberOfPhaseEncodingSteps',
     'PatientID',
     'PatientName',
-    'PatientPosition',
+    #'PatientPosition',                 # const: HFS
     'PercentPhaseFieldOfView',
     'PercentSampling',
-    'PhotometricInterpretation',
+    # 'PhotometricInterpretation',      # const: MONOCHROME2
     'PixelBandwidth',
     'PixelPaddingValue',
     'PixelRepresentation',
     'PixelSpacing',
     'PlanarConfiguration',
-    'PositionReferenceIndicator',
+    #'PositionReferenceIndicator',      # nan
     'PresentationLUTShape',
     'ReconstructionDiameter',
-    'RescaleIntercept',
-    'RescaleSlope',
-    'RescaleType',
-    'Rows',
+    #'RescaleIntercept',                # const: 0.0
+    #'RescaleSlope',                    # const: 1.0
+    #'RescaleType',                     # const: US    'Rows',
     'SAR',
-    'SOPClassUID',
+    #'SOPClassUID',                     # const: 1.2.840.10008.5.1.4.1.1.4
     'SOPInstanceUID',
-    'SamplesPerPixel',
+    #'SamplesPerPixel',                 # const: 1
     'SeriesDescription',
     'SeriesInstanceUID',
     'SeriesNumber',
     'SliceLocation',
     'SliceThickness',
-    'SpacingBetweenSlices',
+    'SpacingBetweenSlices',             # const: 1
     'SpatialResolution',
     'SpecificCharacterSet',
     'StudyInstanceUID',
     'TemporalResolution',
-    'TransferSyntaxUID',
+    #'TransferSyntaxUID',               # const: 1.2.840.10008.1.2
     'TriggerWindow',
     'WindowCenter',
     'WindowWidth'
-]
-
-FM_FIELDS = [
-    'FileMetaInformationGroupLength',
-    'FileMetaInformationVersion',
-    'ImplementationClassUID',
-    'ImplementationVersionName',
-    'MediaStorageSOPClassUID',
-    'MediaStorageSOPInstanceUID',
-    'SourceApplicationEntityTitle',
-    'TransferSyntaxUID',
 ]
 
 SERIES_TYPES = ['FLAIR', 'T1wCE', 'T1w', 'T2w']
@@ -107,14 +95,7 @@ def get_dicom_files(labels):
 def get_meta_info(dicom_path):
     dicom_file = dicom.read_file(dicom_path, force=True)
     row = {f: dicom_file.get(f) for f in FIELDS}
-    row_fm = {f: dicom_file.file_meta.get(f) for f in FM_FIELDS}
-    row_other = {
-        'is_original_encoding': dicom_file.is_original_encoding,
-        'is_implicit_VR': dicom_file.is_implicit_VR,
-        'is_little_endian': dicom_file.is_little_endian,
-        'timestamp': dicom_file.timestamp,
-    }
-    return {**row, **row_fm, **row_other}
+    return row
 
 
 def create_meta_df(dicom_files):
@@ -134,7 +115,7 @@ def main(data_dir='./data/'):
     labels = get_label_df(data_dir)
     dicom_files = get_dicom_files(labels)
     meta_df = create_meta_df(dicom_files)
-    meta_df.to_csv(data_dir + 'train_metadata.csv')
+    meta_df.to_csv(data_dir + 'train_metadata.csv', index=False)
 
 
 if __name__ == "__main__":
